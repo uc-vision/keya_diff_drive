@@ -1,0 +1,8 @@
+<launch>
+
+  <node pkg="conan_motor_driver" name="twist_to_motors" type="twist_to_motors.py" output="screen">
+    <param name="serial_port" value="/dev/ttyUSB0" />
+    <param name="twist_topic" value="/cmd_vel_mux/cmd_vel" />
+  </node>
+
+</launch>
