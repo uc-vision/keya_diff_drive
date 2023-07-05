@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'twist_to_motor_node = keya_diff_drive.twist_to_motor_node:main'
         ],
     },
 )

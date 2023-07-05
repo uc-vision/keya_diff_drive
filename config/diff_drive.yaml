@@ -1,0 +1,10 @@
+twist_to_motor_node:
+  ros__parameters:
+    rate: 50
+    base_width: 0.77
+    twist_topic: /cmd_vel
+    publish_motors: false
+
+    serial_port: /dev/ttyUSB0
+    baud_rate: 115200
+    rotations_per_metre: 10
