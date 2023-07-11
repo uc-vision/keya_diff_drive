@@ -10,15 +10,15 @@ class MotorDriver(object):
                baud_rate=115200, 
                rotations_per_metre=10,
                swap_motors=True,
-               reverse_left_motor=False,
-               reverse_right_motor=False,
+               inverse_left_motor=False,
+               inverse_right_motor=False,
                interactive=True):
     self.serial = serial.Serial(port, baud_rate)
     self.run_read_loop = False
     self.rotations_per_metre = rotations_per_metre
     self.swap_motors = swap_motors
-    self.reverse_left_motor = -1 if reverse_left_motor else 1
-    self.reverse_right_motor = -1 if reverse_right_motor else 1
+    self.inverse_left_motor = -1 if inverse_left_motor else 1
+    self.inverse_right_motor = -1 if inverse_right_motor else 1
     if interactive:
       self.start_read_loop()
 
@@ -35,11 +35,11 @@ class MotorDriver(object):
     if not self.swap_motors:
       m1, m2 = m2, m1
 
-    m1 = int(m1 * self.reverse_left_motor)
-    m2 = int(m2 * self.reverse_right_motor)
+    m1 = int(m1 * self.inverse_left_motor)
+    m2 = int(m2 * self.inverse_right_motor)
     
     return m1, m2
-      
+
   def start_read_loop(self):
     self.run_read_loop = True
     threading.Thread(target=self.read_loop).start()

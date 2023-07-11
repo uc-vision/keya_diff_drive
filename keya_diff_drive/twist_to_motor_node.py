@@ -9,6 +9,7 @@ from keya_diff_drive.motor_driver import MotorDriver
 import rclpy
 
 from rclpy.node import Node
+import numpy
 
 class TwistToMotors(Node):
   def parameters_callback(self, params):
@@ -20,6 +21,12 @@ class TwistToMotors(Node):
           self._publish_motors = param.value
         case 'rotations_per_metre':
           self.motor_driver.rotations_per_metre = param.value
+        case 'swap_motors':
+          self.motor_driver.swap_motors = param.value
+        case 'inverse_left_motor':
+          self.motor_driver.inverse_left_motor = param.value
+        case 'inverse_right_motor':
+          self.motor_driver.inverse_right_motor = param.value
     return SetParametersResult(successful=True)
 
   def __init__(self):
@@ -28,19 +35,23 @@ class TwistToMotors(Node):
     params = [
       ('rate', 50),
       ('ticks_per_target', 2),
-      ('base_width', 0.77),
       ('twist_topic', '/cmd_vel'),
       ('publish_motors', False),
-      
       ('serial_port', '/dev/ttyUSB0'),
       ('baud_rate', 115200),
+
+      ('wheel_separation', 0.43),
+      ('wheel_radius',     0.215)
       ('rotations_per_metre', 10),
       ('swap_motors', False),
       ('inverse_left_motor', False),
       ('inverse_right_motor', False)
     ]
     self.declare_parameters('', parameters=params)
-    self._base_width = self.get_parameter('base_width').value
+    self._wheel_separation = self.get_parameter('wheel_separation').value
+    self._wheel_radius = self.get_parameter('wheel_radius').value
+    self._wheel_circum = 2 * numpy.pi * self._wheel_radius
+
     self._twist_topic = self.get_parameter('twist_topic').value
     self._publish_motors = self.get_parameter('publish_motors').value
     self._ticks_per_target = self.get_parameter('ticks_per_target').value
@@ -80,12 +91,23 @@ class TwistToMotors(Node):
       self.publish_velocity(self.left, self.right)
       self.current_ticks += 1
 
+  def twist2diff(self, forward, ccw):
+    angular_to_linear = ccw * (self._wheel_separation / 2.0) 
+    left_linear_val  = float((forward - angular_to_linear) / self._wheel_circum)
+    right_linear_val = float((forward + angular_to_linear) / self._wheel_circum)
+
+    return left_linear_val, right_linear_val
+
+  def diff2twist(self, left, right):
+    forward = ((left+right) / 2) * self._wheel_circum
+    ccw = ((right-left) / self._wheel_separation) * self._wheel_circum
+    return forward, ccw
+
   def twist_subscriber(self):
     def update_target(msg: Twist):
       dx = msg.linear.x
       dr = msg.angular.z
-      self.right = 1.0 * dx + dr * self._base_width / 2
-      self.left = 1.0 * dx - dr * self._base_width / 2
+      self.left, self.right = self.twist2diff(dx, dr)
       self.current_ticks = 0
     return self.create_subscription(Twist, self._twist_topic, update_target, 10)
 
