@@ -1,7 +1,6 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, RegisterEventHandler, GroupAction
-from launch.event_handlers import OnProcessExit
-from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution, FindExecutable
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 import os
@@ -17,7 +16,7 @@ def generate_launch_description():
     description='Param file for the twist_to_motor node '
     )
   
-  robot_state_publisher_node = Node(
+  keya_diff_drive_node = Node(
     package='keya_diff_drive',
     executable='twist_to_motor_node',
     parameters=[param_file]
@@ -25,5 +24,5 @@ def generate_launch_description():
 
   return LaunchDescription([
     param_file_launch_arg,
-    robot_state_publisher_node
+    keya_diff_drive_node
   ])
