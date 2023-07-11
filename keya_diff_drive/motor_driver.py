@@ -2,6 +2,7 @@ import serial
 import threading
 import sys
 import time
+from rclpy.impl import rcutils_logger
 
 class MotorDriver(object):
 
@@ -19,8 +20,8 @@ class MotorDriver(object):
 
     Maps Metres per second to Rotations per second
     """
-    m1 = right * self.rotations_per_metre
-    m2 = left * self.rotations_per_metre
+    m2 = right * self.rotations_per_metre
+    m1 = -left * self.rotations_per_metre
     return int(m1), int(m2) 
       
   def start_read_loop(self):
