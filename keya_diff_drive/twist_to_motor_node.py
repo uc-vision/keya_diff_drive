@@ -34,13 +34,15 @@ class TwistToMotors(Node):
       
       ('serial_port', '/dev/ttyUSB0'),
       ('baud_rate', 115200),
-      ('rotations_per_metre', 10)
+      ('rotations_per_metre', 10),
+      ('swap_motors', False),
+      ('inverse_left_motor', False),
+      ('inverse_right_motor', False)
     ]
     self.declare_parameters('', parameters=params)
     self._base_width = self.get_parameter('base_width').value
     self._twist_topic = self.get_parameter('twist_topic').value
     self._publish_motors = self.get_parameter('publish_motors').value
-    self._rotations_per_metre = self.get_parameter('rotations_per_metre').value
     self._ticks_per_target = self.get_parameter('ticks_per_target').value
     self.add_on_set_parameters_callback(self.parameters_callback)
   
@@ -48,7 +50,11 @@ class TwistToMotors(Node):
     self.right = 0
     self.motor_driver = MotorDriver(
       self.get_parameter('serial_port').value,
-      self.get_parameter('baud_rate').value
+      self.get_parameter('baud_rate').value,
+      self.get_parameter('rotations_per_metre').value,
+      self.get_parameter('swap_motors').value,
+      self.get_parameter('inverse_left_motor').value,
+      self.get_parameter('inverse_right_motor').value
     )
     timer_period = 1 / self.get_parameter('rate').value
     self.current_ticks = self._ticks_per_target

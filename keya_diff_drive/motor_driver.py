@@ -2,14 +2,23 @@ import serial
 import threading
 import sys
 import time
-from rclpy.impl import rcutils_logger
 
 class MotorDriver(object):
 
-  def __init__(self, port="/dev/ttyUSB0", baud_rate=115200, rotations_per_metre=10, interactive=True):
+  def __init__(self, 
+               port="/dev/ttyUSB0", 
+               baud_rate=115200, 
+               rotations_per_metre=10,
+               swap_motors=True,
+               reverse_left_motor=False,
+               reverse_right_motor=False,
+               interactive=True):
     self.serial = serial.Serial(port, baud_rate)
     self.run_read_loop = False
     self.rotations_per_metre = rotations_per_metre
+    self.swap_motors = swap_motors
+    self.reverse_left_motor = -1 if reverse_left_motor else 1
+    self.reverse_right_motor = -1 if reverse_right_motor else 1
     if interactive:
       self.start_read_loop()
 
@@ -20,9 +29,16 @@ class MotorDriver(object):
 
     Maps Metres per second to Rotations per second
     """
+    m1 = left * self.rotations_per_metre
     m2 = right * self.rotations_per_metre
-    m1 = -left * self.rotations_per_metre
-    return int(m1), int(m2) 
+
+    if not self.swap_motors:
+      m1, m2 = m2, m1
+
+    m1 = int(m1 * self.reverse_left_motor)
+    m2 = int(m2 * self.reverse_right_motor)
+    
+    return m1, m2
       
   def start_read_loop(self):
     self.run_read_loop = True
