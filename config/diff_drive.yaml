@@ -8,3 +8,6 @@ twist_to_motors:
     serial_port: /dev/ttyUSB0
     baud_rate: 115200
     rotations_per_metre: 10
+    swap_motors: false
+    inverse_left_motor: false
+    inverse_right_motor: false
