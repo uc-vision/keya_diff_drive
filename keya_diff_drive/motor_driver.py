@@ -1,7 +1,4 @@
 import serial
-import threading
-import sys
-import time
 
 class MotorDriver(object):
 
@@ -11,16 +8,13 @@ class MotorDriver(object):
                rotations_per_metre=10,
                swap_motors=True,
                inverse_left_motor=False,
-               inverse_right_motor=False,
-               interactive=True):
+               inverse_right_motor=False):
     self.serial = serial.Serial(port, baud_rate)
     self.run_read_loop = False
     self.rotations_per_metre = rotations_per_metre
     self.swap_motors = swap_motors
     self.inverse_left_motor = -1 if inverse_left_motor else 1
     self.inverse_right_motor = -1 if inverse_right_motor else 1
-    if interactive:
-      self.start_read_loop()
 
   def mix(self, left, right):
     """
@@ -40,18 +34,6 @@ class MotorDriver(object):
     
     return m1, m2
 
-  def start_read_loop(self):
-    self.run_read_loop = True
-    threading.Thread(target=self.read_loop).start()
-  
-  def read_loop(self):
-    while self.run_read_loop:
-      b = self.serial.read()
-      if b == b'\r':
-          sys.stdout.write("\n\r")
-      sys.stdout.write(b.decode("ascii"))
-      sys.stdout.flush()
-
   def get_response(self):
     return self.serial.read_until(expected=b"\r").decode("ascii")
 
@@ -66,14 +48,6 @@ class MotorDriver(object):
 
   def send_velocity(self, left, right):
     self.send("!m %d %d" %self.mix(left,right))
-
-  def move_distance(self, left, right, duration, stop=True):
-    end_time = time.time() + duration
-    while time.time() < end_time:
-      self.send_velocity(left / duration, right / duration)
-      time.sleep(0.1)
-    if stop:
-      self.send_velocity(0.0,0.0)
 
 if __name__ == "__main__":
   conan = MotorDriver(interactive=False)
