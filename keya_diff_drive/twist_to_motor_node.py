@@ -39,7 +39,7 @@ class TwistToMotors(Node):
       ('odom_topic', '/wheel_odometry'),
 
       ('odom_frame', 'odom'),
-      ('base_frame', 'wheel_odom_link')
+      ('base_frame', 'wheel_odom_link'),
 
       ('publish_odom', True),
       ('publish_motors', False),
@@ -134,15 +134,16 @@ class TwistToMotors(Node):
 
   def publish_odometry(self):
     if self._publish_odom:
-      self.odom_msg.header.stamp = self.get_clock().now()
+      self.odom_msg.header.stamp = self.get_clock().now().to_msg()
 
       message = self.motor_driver.get_encoders()
       
       s = message.split(':')
-      if len(s) == 0:
+      if len(s) <= 1:
         return
+      
       left_diff = int(s[0][2:])
-      right_diff = int(s[1])
+      right_diff = int(s[1][:-1])
       forward, ccw = self.diff2twist(left_diff, right_diff)
     
       self.odom_msg.twist.twist.linear.x = forward
