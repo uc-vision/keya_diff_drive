@@ -137,7 +137,12 @@ class TwistToMotors(Node):
       self.odom_msg.header.stamp = self.get_clock().now()
 
       message = self.motor_driver.get_encoders()
-      left_diff, right_diff = message.split(':')
+      
+      s = message.split(':')
+      if len(s) == 0:
+        return
+      left_diff = int(s[0][2:])
+      right_diff = int(s[1])
       forward, ccw = self.diff2twist(left_diff, right_diff)
     
       self.odom_msg.twist.twist.linear.x = forward
