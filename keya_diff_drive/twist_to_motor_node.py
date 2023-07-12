@@ -38,6 +38,9 @@ class TwistToMotors(Node):
       ('twist_topic', '/cmd_vel'),
       ('odom_topic', '/wheel_odometry'),
 
+      ('odom_frame', 'odom'),
+      ('base_frame', 'wheel_odom_link')
+
       ('publish_odom', True),
       ('publish_motors', False),
 
@@ -88,8 +91,8 @@ class TwistToMotors(Node):
   
       # setup message
       self.odom_msg = Odometry()
-      self.odom_msg.header.frame_id = self.odom_frame
-      self.odom_msg.child_frame_id = self.base_frame
+      self.odom_msg.header.frame_id = self.get_parameter('odom_frame').value
+      self.odom_msg.child_frame_id = self.get_parameter('base_frame').value
       self.odom_msg.pose.pose.position.x = 0.0
       self.odom_msg.pose.pose.position.y = 0.0
       self.odom_msg.pose.pose.position.z = 0.0    # always on the ground, we hope
