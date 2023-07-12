@@ -125,7 +125,7 @@ class TwistToMotors(Node):
 
   @cached_property
   def wheel_odometry_publisher(self):
-    return self.create_publisher(String, self._odom_topic, 10)
+    return self.create_publisher(Odometry, self._odom_topic, 10)
   
   def publish_velocity(self, left, right):
     if self._publish_motors:
@@ -187,7 +187,7 @@ class TwistToMotors(Node):
       self.odom_msg.twist.covariance[14] = forward * self._odom_covar_scale
       
       # ... and publish!
-      self.wheel_odometry_publisher.publish(String(data=message))   
+      self.wheel_odometry_publisher.publish(self.odom_msg)   
     
 
   def twist2diff(self, forward, ccw):
