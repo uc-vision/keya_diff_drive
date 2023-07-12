@@ -128,7 +128,7 @@ class TwistToMotors(Node):
     return self.create_publisher(Odometry, self._odom_topic, 10)
   
   def publish_velocity(self, left, right):
-    if self._publish_motors:
+    if self._publish_motors: 
       self.left_wheel_publisher.publish(Float32(data=left))
       self.right_wheel_publisher.publish(Float32(data=right))
 
