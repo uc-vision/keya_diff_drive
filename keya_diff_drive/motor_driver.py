@@ -10,7 +10,6 @@ class MotorDriver(object):
                inverse_left_motor=False,
                inverse_right_motor=False):
     self.serial = serial.Serial(port, baud_rate)
-    self.run_read_loop = False
     self.rotations_per_metre = rotations_per_metre
     self.swap_motors = swap_motors
     self.inverse_left_motor = -1 if inverse_left_motor else 1
