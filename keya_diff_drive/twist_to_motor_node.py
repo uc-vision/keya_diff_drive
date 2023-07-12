@@ -185,11 +185,8 @@ class TwistToMotors(Node):
       self.odom_msg.twist.covariance[7]  = forward * self._odom_covar_scale
       self.odom_msg.twist.covariance[14] = forward * self._odom_covar_scale
       
-      
       # ... and publish!
-      self.wheel_odometry_publisher.publish(String(data=message))
-      if self.publish_tf:
-          self.tf_publisher.sendTransform(self.tf_msg)            
+      self.wheel_odometry_publisher.publish(String(data=message))   
     
 
   def twist2diff(self, forward, ccw):
