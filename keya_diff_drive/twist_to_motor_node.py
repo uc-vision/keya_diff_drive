@@ -37,7 +37,11 @@ class TwistToMotors(Node):
       ('odometry_rate', 50),
       ('timeout_duration', 1),
       ('twist_topic', '/cmd_vel'),
+      ('odom_topic', '/wheel_odometry'),
+
+      ('publish_odom', True),
       ('publish_motors', False),
+
       ('serial_port', '/dev/ttyUSB0'),
       ('baud_rate', 115200),
 
@@ -54,6 +58,9 @@ class TwistToMotors(Node):
     self._wheel_circum = 2 * numpy.pi * self._wheel_radius
 
     self._twist_topic = self.get_parameter('twist_topic').value
+    self._odom_topic = self.get_parameter('odom_topic').value
+
+    self._publish_odom = self.get_parameter('publish_odom').value
     self._publish_motors = self.get_parameter('publish_motors').value
 
     self.add_on_set_parameters_callback(self.parameters_callback)
@@ -77,26 +84,37 @@ class TwistToMotors(Node):
     self.vel_timer = self.create_timer(velocity_period, self.velocity_callback)
 
     odometry_period = 1 / self.get_parameter('odometry_rate').value
-    self.odom_timer = self.create_timer(odometry_period, self.odometry_callback)
+    self.odom_timer = self.create_timer(odometry_period, self.publish_odometry)
 
     self.twist_sub = self.twist_subscriber()
   
+
   @cached_property
   def left_wheel_publisher(self):
     return self.create_publisher(Float32, 'lwheel_vtarget', 10)
   
+
   @cached_property
   def right_wheel_publisher(self):
     return self.create_publisher(Float32, 'rwheel_vtarget', 10)
   
+
   @cached_property
   def wheel_odometry_publisher(self):
-    return self.create_publisher(String, 'wheel_odometry', 10)
+    return self.create_publisher(String, self._odom_topic, 10)
   
+
   def publish_velocity(self, left, right):
     if self._publish_motors:
       self.left_wheel_publisher.publish(Float32(data=left))
       self.right_wheel_publisher.publish(Float32(data=right))
+
+
+  def publish_odometry(self):
+    if self._publish_odom:
+      message = self.motor_driver.get_encoders()
+      self.wheel_odometry_publisher.publish(message)
+
 
   def velocity_callback(self):
     duration_since_last_message = self.get_clock().now() - self.time_since_msg
@@ -104,21 +122,19 @@ class TwistToMotors(Node):
       self.motor_driver.send_velocity(self.left, self.right)
       self.publish_velocity(self.left, self.right)
 
-  def odometry_callback(self):
-    message = self.motor_driver.get_encoders()
-    self.wheel_odometry_publisher.publish(message)
 
   def twist2diff(self, forward, ccw):
     angular_to_linear = ccw * (self._wheel_separation / 2.0) 
     left_linear_val  = float((forward - angular_to_linear) / self._wheel_circum)
     right_linear_val = float((forward + angular_to_linear) / self._wheel_circum)
-
     return left_linear_val, right_linear_val
+
 
   def diff2twist(self, left, right):
     forward = ((left+right) / 2) * self._wheel_circum
     ccw = ((right-left) / self._wheel_separation) * self._wheel_circum
     return forward, ccw
+
 
   def twist_subscriber(self):
     def update_target(msg: Twist):
@@ -127,10 +143,18 @@ class TwistToMotors(Node):
       self.left, self.right = self.twist2diff(dx, dr)
       self.time_since_msg = self.get_clock().now()
     return self.create_subscription(Twist, self._twist_topic, update_target, 10)
+  
+  def destroy_node(self):
+    self.odom_timer.destroy()
+    self.vel_timer.destroy()
+    self.motor_driver.serial.close()
+    super().destroy_node()
+
 
 def main(args=None):
   rclpy.init(args=args)
   TwistToMotors_node = TwistToMotors()
+
   rclpy.spin(TwistToMotors_node)
   TwistToMotors_node.destroy_node()
   rclpy.shutdown()

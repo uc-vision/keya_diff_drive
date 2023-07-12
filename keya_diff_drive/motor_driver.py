@@ -49,5 +49,8 @@ class MotorDriver(object):
   def send_velocity(self, left, right):
     self.send("!m %d %d" %self.mix(left,right))
 
+  def close(self):
+    self.serial.close()
+
 if __name__ == "__main__":
   conan = MotorDriver(interactive=False)

@@ -1,13 +1,21 @@
 twist_to_motors:
   ros__parameters:
-    rate: 50
-    base_width: 0.77
-    twist_topic: /cmd_vel
-    publish_motors: true
+    velocity_rate: 50
+    odometry_rate: 50
 
-    serial_port: /dev/ttyUSB0
+    twist_topic: /cmd_vel
+    odom_topic: /wheel_odometry
+
+    publish_odom: true
+    publish_motors: true
+    
+    timeout_duration: 1
+
+    serial_port: /dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0
     baud_rate: 115200
+    wheel_separation: 0.77
+    wheel_radius: 0.215
     rotations_per_metre: 10
     swap_motors: false
-    inverse_left_motor: false
+    inverse_left_motor: true
     inverse_right_motor: false
