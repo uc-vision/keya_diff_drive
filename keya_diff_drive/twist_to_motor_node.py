@@ -131,7 +131,7 @@ class TwistToMotors(Node):
        self.get_logger().info(f'Odom: {forward},{ccw}')
       
       odom_msg = Odometry()
-      odom_msg.header.stamp = current_time
+      odom_msg.header.stamp = current_time.to_msg()
       odom_msg.header.frame_id = self._odom_frame
       odom_msg.child_frame_id = self._base_frame
       self.wheel_odometry_publisher.publish(odom_msg)

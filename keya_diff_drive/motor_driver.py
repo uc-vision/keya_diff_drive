@@ -68,7 +68,6 @@ class MotorDriver(object):
 
   def send_velocity(self, left, right):
     m1, m2 = self.linear_to_rps(left, right)
-    logger.info(f'CMD: {m1},{m2}')
     self.send("!m %d %d" %(m1,m2))
     # clear buffer of responses
     self.get_response()
