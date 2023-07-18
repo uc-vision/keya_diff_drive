@@ -66,7 +66,7 @@ class TwistToMotors(Node):
     self._wheel_circum = 2 * np.pi * self._wheel_radius
 
     self._odom_frame = self.get_parameter('odom_frame').value
-    self._base_frame = self.get_parameter('wheel_odom_link').value
+    self._base_frame = self.get_parameter('base_frame').value
 
     self._twist_topic = self.get_parameter('twist_topic').value
     self._odom_topic = self.get_parameter('odom_topic').value
