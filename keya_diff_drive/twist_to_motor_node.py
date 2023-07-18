@@ -12,6 +12,7 @@ from std_msgs.msg import Int16
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
 import rclpy
+from rclpy.constants import S_TO_NS
 
 from rclpy.node import Node
 import numpy as np
@@ -54,7 +55,7 @@ class TwistToMotors(Node):
       ('wheel_separation', 0.43),
       ('wheel_radius',     0.215),
       ('rotations_per_metre', 10),
-      ('ticks_per_revolution', 351)
+      ('ticks_per_revolution', 351),
       ('swap_motors', False),
       ('inverse_left_motor', False),
       ('inverse_right_motor', False)
@@ -87,17 +88,12 @@ class TwistToMotors(Node):
       self.get_parameter('inverse_right_motor').value
     )
     
-    self.last_time = self.get_clock().now().to_msg()
-    self.x = 0.0
-    self.y = 0.0
-    self.th = 0.0
 
-    self.vx =  0.0
-    self.vy =  0.0
-    self.vth =  0.0
-    self.last_left_ticks = 0
-    self.last_right_ticks = 0
     self._tpr = self.get_parameter('ticks_per_revolution').value
+
+    self.last_read_time = self.get_clock().now()
+    self.last_left = 0
+    self.last_right = 0
     odometry_period = 1 / self.get_parameter('odometry_rate').value
     self.odom_timer = self.create_timer(odometry_period, self.publish_odometry)
 
@@ -124,64 +120,28 @@ class TwistToMotors(Node):
       self.right_wheel_publisher.publish(Float32(data=right))
 
   def publish_odometry(self):
-    if self._publish_odom:
-      current_time = self.get_clock().now()
 
-      message = self.motor_driver.get_encoders()
-      
-      s = message.split(':')
-      if len(s) <= 1:
+    self.motor_driver.send_velocity(self.left, self.right)
+    self.publish_velocity(self.left, self.right)
+
+    if self._publish_odom:
+
+      current_time = self.get_clock().now()
+      #response = self.motor_driver.get_encoders()
+      response = self.motor_driver.get_relative_encoders()
+      if response is None:
         return
       
-      left_ticks = int(s[0][2:])
-      right_ticks = int(s[1][:-1])
+      left, right = response
 
-      delta_L = left_ticks - self.last_left_ticks 
-      delta_R = right_ticks - self.last_right_ticks
-      dl = 2 * np.pi * self._wheel_radius * delta_L / self._tpr
-      dr = 2 * np.pi * self._wheel_radius * delta_R / self._tpr
-      dc = (dl + dr) / 2
-      dt = (current_time - self.last_time).seconds_nanoseconds()[0]
-      dth = (dr-dl)/self._wheel_separation
-
-      if dr==dl:
-        dx=dr*np.cos(self.th)
-        dy=dr*np.sin(self.th)
-
-      else:
-        radius=dc/dth
-
-        iccX=self.x-radius*np.sin(self.th)
-        iccY=self.y+radius*np.cos(self.th)
-
-        dx = np.cos(dth) * (self.x-iccX) - np.sin(dth) * (self.y-iccY) + iccX - self.x
-        dy = np.sin(dth) * (self.x-iccX) + np.cos(dt) * (self.y-iccY) + iccY - self.y
-
-      self.x += dx  
-      self.y += dy 
-      self.th =(self.th+dth) %  (2 * np.pi)
-
-      odom_quat = euler2quat(0, 0, self.th)
-
-      odom = Odometry()
-      odom.header.stamp = current_time.to_msg()
-      odom.header.frame_id = "odom"
-
-      odom.pose.pose = Pose(Point(self.x, self.y, 0.), Quaternion(*odom_quat))
-
-      if dt>0:
-        self.vx=dx/dt
-        self.vy=dy/dt
-        self.vth=dth/dt
-
-      odom.child_frame_id = "base_link"
-      odom.twist.twist = Twist(Vector3(self.vx, self.vy, 0), Vector3(0, 0, self.vth))
-
-      self.wheel_odometry_publisher.publish(odom)
-
-      self.last_left_ticks = left_ticks
-      self.last_right_ticks = right_ticks
-      self.last_time = current_time
+      forward, ccw = self.diff2twist(left, right)
+      if forward > 0:
+       self.get_logger().info(f'Odom: {forward},{ccw}')
+      
+      self.last_left = left
+      self.last_right = right
+      self.last_read_time = current_time
+      # self.wheel_odometry_publisher.publish(odom)
     
 
   def twist2diff(self, forward, ccw):
@@ -201,9 +161,9 @@ class TwistToMotors(Node):
     def update_target(msg: Twist):
       dx = msg.linear.x
       dr = msg.angular.z
+      #self.get_logger().info(f'Linear: {dx}')
       self.left, self.right = self.twist2diff(dx, dr)
-      self.motor_driver.send_velocity(self.left, self.right)
-      self.publish_velocity(self.left, self.right)
+      
     return self.create_subscription(Twist, self._twist_topic, update_target, 10)
   
   def destroy_node(self):
