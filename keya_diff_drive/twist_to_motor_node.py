@@ -55,7 +55,6 @@ class TwistToMotors(Node):
       ('wheel_separation', 0.43),
       ('wheel_radius',     0.215),
       ('rotations_per_metre', 10),
-      ('ticks_per_revolution', 351),
       ('swap_motors', False),
       ('inverse_left_motor', False),
       ('inverse_right_motor', False)
@@ -64,16 +63,16 @@ class TwistToMotors(Node):
     
     self._wheel_separation = self.get_parameter('wheel_separation').value
     self._wheel_radius = self.get_parameter('wheel_radius').value
-    
     self._wheel_circum = 2 * np.pi * self._wheel_radius
+
+    self._odom_frame = self.get_parameter('odom_frame').value
+    self._base_frame = self.get_parameter('wheel_odom_link').value
 
     self._twist_topic = self.get_parameter('twist_topic').value
     self._odom_topic = self.get_parameter('odom_topic').value
 
     self._publish_odom = self.get_parameter('publish_odom').value
     self._publish_motors = self.get_parameter('publish_motors').value
-
-    self._odom_covar_scale = 0.01
 
     self.add_on_set_parameters_callback(self.parameters_callback)
   
@@ -87,13 +86,7 @@ class TwistToMotors(Node):
       self.get_parameter('inverse_left_motor').value,
       self.get_parameter('inverse_right_motor').value
     )
-    
 
-    self._tpr = self.get_parameter('ticks_per_revolution').value
-
-    self.last_read_time = self.get_clock().now()
-    self.last_left = 0
-    self.last_right = 0
     odometry_period = 1 / self.get_parameter('odometry_rate').value
     self.odom_timer = self.create_timer(odometry_period, self.publish_odometry)
 
@@ -127,7 +120,6 @@ class TwistToMotors(Node):
     if self._publish_odom:
 
       current_time = self.get_clock().now()
-      #response = self.motor_driver.get_encoders()
       response = self.motor_driver.get_relative_encoders()
       if response is None:
         return
@@ -138,10 +130,11 @@ class TwistToMotors(Node):
       if forward > 0:
        self.get_logger().info(f'Odom: {forward},{ccw}')
       
-      self.last_left = left
-      self.last_right = right
-      self.last_read_time = current_time
-      # self.wheel_odometry_publisher.publish(odom)
+      odom_msg = Odometry()
+      odom_msg.header.stamp = current_time
+      odom_msg.header.frame_id = self._odom_frame
+      odom_msg.child_frame_id = self._base_frame
+      self.wheel_odometry_publisher.publish(odom_msg)
     
 
   def twist2diff(self, forward, ccw):
@@ -161,9 +154,7 @@ class TwistToMotors(Node):
     def update_target(msg: Twist):
       dx = msg.linear.x
       dr = msg.angular.z
-      #self.get_logger().info(f'Linear: {dx}')
       self.left, self.right = self.twist2diff(dx, dr)
-      
     return self.create_subscription(Twist, self._twist_topic, update_target, 10)
   
   def destroy_node(self):

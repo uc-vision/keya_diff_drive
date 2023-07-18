@@ -19,12 +19,10 @@ class MotorDriver(object):
     self.inverse_left_motor = -1 if inverse_left_motor else 1
     self.inverse_right_motor = -1 if inverse_right_motor else 1
 
-    # self.last_odom_time = 0
-    # self.last_odom = (0,0)
-
   def linear_to_rps(self, left, right):
     m1 = left * self.rotations_per_metre
     m2 = right * self.rotations_per_metre
+    
     if self.swap_motors:
       m1, m2 = m2, m1
 
@@ -46,43 +44,6 @@ class MotorDriver(object):
   def get_response(self):
     return self.serial.read_until(expected=b"\r").decode("ascii")
 
-  # def get_encoders(self):
-  #   self.serial.read_all()
-  #   self.send("?C")
-  #   success = self.get_response()
-  #   values = self.get_response()
-
-  #   logger.info(f'{values}, {success}')
-
-  #   s = values.split(':')
-  #   if len(s) <= 1:
-  #     return
-
-  #   # encoders report 3x speed
-  #   m1_abs = int(s[0][2:])/3.0
-  #   m2_abs = int(s[1][:-1])/3.0
-
-
-  #   if self.last_odom_time == 0:
-  #     self.last_odom_time = time.time()
-  #     self.last_odom = (m1_abs,m2_abs)
-  #     return 0,0
-    
-
-  #   delta_time = time.time() - self.last_odom_time
-
-  #   m1 = (m1_abs - self.last_odom[0]) / delta_time
-  #   m2 = (m2_abs - self.last_odom[1]) / delta_time
-
-  #   left, right = self.rps_to_linear(m1,m2)
-
-  #   self.last_odom_time = time.time()
-  #   self.last_odom = (m1_abs,m2_abs)
-
-  #   logger.info(f'ODM: {m1}, {m2}')
-
-  #   return left, right
-
   def get_relative_encoders(self):
     self.send("?S")
     success = self.get_response()
@@ -97,8 +58,6 @@ class MotorDriver(object):
     m2 = int(s[1][:-1])/3.0
 
     left, right = self.rps_to_linear(m1,m2)
-
-    
 
     return left, right
 
@@ -119,4 +78,4 @@ class MotorDriver(object):
     self.serial.close()
 
 if __name__ == "__main__":
-  conan = MotorDriver(interactive=False)
+  conan = MotorDriver()
