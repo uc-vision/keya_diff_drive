@@ -87,7 +87,12 @@ class TwistToMotors(Node):
       self.get_parameter('inverse_right_motor').value
     )
 
+    self.odom_msg = Odometry()
+    self.odom_msg.header.frame_id = self._odom_frame
+    self.odom_msg.child_frame_id = self._base_frame
+
     odometry_period = 1 / self.get_parameter('odometry_rate').value
+    self.last_odom_time = self.get_clock().now()
     self.odom_timer = self.create_timer(odometry_period, self.publish_odometry)
 
     self.twist_sub = self.twist_subscriber()
@@ -130,11 +135,14 @@ class TwistToMotors(Node):
       if forward > 0:
        self.get_logger().info(f'Odom: {forward},{ccw}')
       
-      odom_msg = Odometry()
-      odom_msg.header.stamp = current_time.to_msg()
-      odom_msg.header.frame_id = self._odom_frame
-      odom_msg.child_frame_id = self._base_frame
-      self.wheel_odometry_publisher.publish(odom_msg)
+      self.odom_msg.header.stamp = current_time.to_msg()
+      self.odom_msg.pose.pose.position.x += forward * ( current_time - self.last_odom_time )
+      self.odom_msg.pose.pose.position.z += ccw * ( current_time - self.last_odom_time )
+      self.odom_msg.twist.twist.linear.x = forward
+      self.odom_msg.twist.twist.angular.z = ccw
+
+      self.wheel_odometry_publisher.publish(self.odom_msg)
+      self.last_odom_time = current_time
     
 
   def twist2diff(self, forward, ccw):
