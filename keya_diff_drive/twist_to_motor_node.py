@@ -132,12 +132,9 @@ class TwistToMotors(Node):
       left, right = response
 
       forward, ccw = self.diff2twist(left, right)
-      if forward > 0:
-       self.get_logger().info(f'Odom: {forward},{ccw}')
-      
       self.odom_msg.header.stamp = current_time.to_msg()
-      self.odom_msg.pose.pose.position.x += forward * ( current_time - self.last_odom_time )
-      self.odom_msg.pose.pose.position.z += ccw * ( current_time - self.last_odom_time )
+      self.odom_msg.pose.pose.position.x += forward * ( current_time - self.last_odom_time ).nanoseconds/1e9
+      self.odom_msg.pose.pose.position.z += ccw * ( current_time - self.last_odom_time ).nanoseconds/1e9
       self.odom_msg.twist.twist.linear.x = forward
       self.odom_msg.twist.twist.angular.z = ccw
 
