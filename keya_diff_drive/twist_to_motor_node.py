@@ -125,14 +125,18 @@ class TwistToMotors(Node):
     if self._publish_odom:
 
       current_time = self.get_clock().now()
+      self.odom_msg.header.stamp = current_time.to_msg()
+
       response = self.motor_driver.get_relative_encoders()
       if response is None:
+        self.odom_msg.twist.twist.linear.x = 0.0
+        self.odom_msg.twist.twist.angular.z = 0.0
+        self.wheel_odometry_publisher.publish(self.odom_msg)
         return
       
       left, right = response
 
       forward, ccw = self.diff2twist(left, right)
-      self.odom_msg.header.stamp = current_time.to_msg()
       self.odom_msg.pose.pose.position.x += forward * ( current_time - self.last_odom_time ).nanoseconds/1e9
       self.odom_msg.pose.pose.position.z += ccw * ( current_time - self.last_odom_time ).nanoseconds/1e9
       self.odom_msg.twist.twist.linear.x = forward
