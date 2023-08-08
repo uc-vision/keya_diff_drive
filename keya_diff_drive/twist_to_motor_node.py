@@ -51,6 +51,7 @@ class TwistToMotors(Node):
 
       ('serial_port', '/dev/ttyUSB0'),
       ('baud_rate', 115200),
+      ('serial_timeout', 0.1),
 
       ('wheel_separation', 0.43),
       ('wheel_radius',     0.215),
@@ -81,6 +82,7 @@ class TwistToMotors(Node):
     self.motor_driver = MotorDriver(
       self.get_parameter('serial_port').value,
       self.get_parameter('baud_rate').value,
+      self.get_parameter('serial_timeout').value,
       self.get_parameter('rotations_per_metre').value,
       self.get_parameter('swap_motors').value,
       self.get_parameter('inverse_left_motor').value,
@@ -135,8 +137,8 @@ class TwistToMotors(Node):
         return
       
       left, right = response
-
       forward, ccw = self.diff2twist(left, right)
+
       self.odom_msg.pose.pose.position.x += forward * ( current_time - self.last_odom_time ).nanoseconds/1e9
       self.odom_msg.pose.pose.position.z += ccw * ( current_time - self.last_odom_time ).nanoseconds/1e9
       self.odom_msg.twist.twist.linear.x = forward

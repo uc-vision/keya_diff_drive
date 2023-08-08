@@ -9,11 +9,12 @@ class MotorDriver(object):
   def __init__(self, 
                port="/dev/ttyUSB0", 
                baud_rate=115200, 
+               timeout=0.1,
                rotations_per_metre=10,
                swap_motors=False,
                inverse_left_motor=False,
                inverse_right_motor=False):
-    self.serial = serial.Serial(port, baud_rate, timeout=0.5)
+    self.serial = serial.Serial(port, baud_rate, timeout=timeout)
     self.rotations_per_metre = rotations_per_metre
     self.swap_motors = swap_motors
     self.inverse_left_motor = -1 if inverse_left_motor else 1
