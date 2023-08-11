@@ -52,6 +52,7 @@ class TwistToMotors(Node):
       ('serial_port', '/dev/ttyUSB0'),
       ('baud_rate', 115200),
       ('serial_timeout', 0.1),
+      ('command_timeout', 1),
 
       ('wheel_separation', 0.43),
       ('wheel_radius',     0.215),
@@ -62,6 +63,7 @@ class TwistToMotors(Node):
     ]
     self.declare_parameters('', parameters=params)
     
+    self._command_timeout = self.get_parameter('command_timeout').value
     self._wheel_separation = self.get_parameter('wheel_separation').value
     self._wheel_radius = self.get_parameter('wheel_radius').value
     self._wheel_circum = 2 * np.pi * self._wheel_radius
@@ -95,6 +97,7 @@ class TwistToMotors(Node):
 
     odometry_period = 1 / self.get_parameter('odometry_rate').value
     self.last_odom_time = self.get_clock().now()
+    self.last_command_time = self.get_clock().now()
     self.odom_timer = self.create_timer(odometry_period, self.publish_odometry)
 
     self.twist_sub = self.twist_subscriber()
@@ -120,17 +123,18 @@ class TwistToMotors(Node):
       self.right_wheel_publisher.publish(Float32(data=right))
 
   def publish_odometry(self):
+    current_time = self.get_clock().now()
 
-    self.motor_driver.send_velocity(self.left, self.right)
-    self.publish_velocity(self.left, self.right)
+    sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds/1e9
+    if sec_since_last_command < self._command_timeout:
+      self.motor_driver.send_velocity(self.left, self.right)
+      self.publish_velocity(self.left, self.right)
 
     if self._publish_odom:
-
-      current_time = self.get_clock().now()
-      self.odom_msg.header.stamp = current_time.to_msg()
-
       response = self.motor_driver.get_relative_encoders()
-      if response is None:
+  
+      self.odom_msg.header.stamp = current_time.to_msg()
+      if response is not None:
         self.odom_msg.twist.twist.linear.x = 0.0
         self.odom_msg.twist.twist.angular.z = 0.0
         self.wheel_odometry_publisher.publish(self.odom_msg)
@@ -166,6 +170,7 @@ class TwistToMotors(Node):
       dx = msg.linear.x
       dr = msg.angular.z
       self.left, self.right = self.twist2diff(dx, dr)
+      self.last_command_time = self.get_clock().now()
     return self.create_subscription(Twist, self._twist_topic, update_target, 10)
   
   def destroy_node(self):
