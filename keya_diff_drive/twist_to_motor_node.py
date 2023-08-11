@@ -131,9 +131,7 @@ class TwistToMotors(Node):
     cov[1, 1] = self.static_cov ** 2
     cov[2, 2] = self.static_cov ** 2
     cov[5, 5] = (ccw * self.angular_cov) ** 2
-
     self.odom_msg.twist.covariance = cov.flatten().tolist()
-
     self.wheel_odometry_publisher.publish(self.odom_msg)
     self.last_odom_time = current_time
 
