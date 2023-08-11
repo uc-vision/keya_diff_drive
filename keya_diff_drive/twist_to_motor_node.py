@@ -94,11 +94,14 @@ class TwistToMotors(Node):
     self.odom_msg = Odometry()
     self.odom_msg.header.frame_id = self._odom_frame
     self.odom_msg.child_frame_id = self._base_frame
+    self.static_cov = 1e-3
+    self.linear_cov = 0.02
+    self.angular_cov = 0.04
 
     odometry_period = 1 / self.get_parameter('odometry_rate').value
     self.last_odom_time = self.get_clock().now()
     self.last_command_time = self.get_clock().now()
-    self.odom_timer = self.create_timer(odometry_period, self.publish_odometry)
+    self.loop_timer = self.create_timer(odometry_period, self.loop)
 
     self.twist_sub = self.twist_subscriber()
 
@@ -116,41 +119,46 @@ class TwistToMotors(Node):
   @cached_property
   def wheel_odometry_publisher(self):
     return self.create_publisher(Odometry, self._odom_topic, 10)
-  
-  def publish_velocity(self, left, right):
-    if self._publish_motors: 
-      self.left_wheel_publisher.publish(Float32(data=left))
-      self.right_wheel_publisher.publish(Float32(data=right))
 
-  def publish_odometry(self):
+  def publish_odom(self, current_time, forward: float, ccw: float):
+    self.odom_msg.header.stamp = current_time.to_msg()
+    self.odom_msg.pose.pose.position.x += forward * ( current_time - self.last_odom_time ).nanoseconds/1e9
+    self.odom_msg.pose.pose.position.z += ccw * ( current_time - self.last_odom_time ).nanoseconds/1e9
+    self.odom_msg.twist.twist.linear.x = forward
+    self.odom_msg.twist.twist.angular.z = ccw
+    cov = np.array(self.odom_msg.twist.covariance).reshape(6, 6)
+    cov[0, 0] = (forward * self.linear_cov + self.static_cov) ** 2
+    cov[1, 1] = self.static_cov ** 2
+    cov[2, 2] = self.static_cov ** 2
+    cov[5, 5] = (ccw * self.angular_cov) ** 2
+
+    self.odom_msg.twist.covariance = cov.flatten().tolist()
+
+    self.wheel_odometry_publisher.publish(self.odom_msg)
+    self.last_odom_time = current_time
+
+
+  def loop(self):
     current_time = self.get_clock().now()
-
-    sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds/1e9
+    sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds / 1e9
     if sec_since_last_command < self._command_timeout:
       self.motor_driver.send_velocity(self.left, self.right)
-      self.publish_velocity(self.left, self.right)
+
+    if self._publish_motors: 
+      self.left_wheel_publisher.publish(Float32(data=self.left))
+      self.right_wheel_publisher.publish(Float32(data=self.right))
 
     if self._publish_odom:
-      response = self.motor_driver.get_relative_encoders()
-  
-      self.odom_msg.header.stamp = current_time.to_msg()
-      if response is not None:
-        self.odom_msg.twist.twist.linear.x = 0.0
-        self.odom_msg.twist.twist.angular.z = 0.0
-        self.wheel_odometry_publisher.publish(self.odom_msg)
+      try:
+        response = self.motor_driver.get_relative_encoders()
+        forward, ccw = 0.0, 0.0
+        if response is not None:
+          forward, ccw = self.diff2twist(**response)
+        self.publish_odom(current_time, forward, ccw)
+      except Exception as e:
+        self.get_logger().error(str(e))
         return
-      
-      left, right = response
-      forward, ccw = self.diff2twist(left, right)
 
-      self.odom_msg.pose.pose.position.x += forward * ( current_time - self.last_odom_time ).nanoseconds/1e9
-      self.odom_msg.pose.pose.position.z += ccw * ( current_time - self.last_odom_time ).nanoseconds/1e9
-      self.odom_msg.twist.twist.linear.x = forward
-      self.odom_msg.twist.twist.angular.z = ccw
-
-      self.wheel_odometry_publisher.publish(self.odom_msg)
-      self.last_odom_time = current_time
-    
 
   def twist2diff(self, forward, ccw):
     angular_to_linear = ccw * (self._wheel_separation / 2.0) 
@@ -164,7 +172,6 @@ class TwistToMotors(Node):
     ccw = ((right-left) / self._wheel_separation) * self._wheel_circum
     return forward, ccw
 
-
   def twist_subscriber(self):
     def update_target(msg: Twist):
       dx = msg.linear.x
@@ -174,7 +181,7 @@ class TwistToMotors(Node):
     return self.create_subscription(Twist, self._twist_topic, update_target, 10)
   
   def destroy_node(self):
-    self.odom_timer.destroy()
+    self.loop_timer.destroy()
     self.motor_driver.serial.close()
     super().destroy_node()
 
