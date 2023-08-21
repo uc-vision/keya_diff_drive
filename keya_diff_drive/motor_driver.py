@@ -44,6 +44,21 @@ class MotorDriver(object):
 
   def get_response(self):
     return self.serial.read_until(expected=b"\r").decode("ascii")
+  
+  def get_analog_input(self):
+    self.send("?AI")
+    success = self.get_response()
+    return self.get_response()
+
+  def get_digital_input(self):
+    self.send("?DI")
+    success = self.get_response()
+    return self.get_response()
+  
+  def get_motor_command(self):
+    self.send("?DI")
+    success = self.get_response()
+    return self.get_response()
 
   def get_relative_encoders(self):
     self.send("?S")

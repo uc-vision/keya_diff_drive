@@ -40,7 +40,7 @@ class TwistToMotors(Node):
 
     params = [
       ('odometry_rate', 50),
-      ('twist_topic', '/cmd_vel'),
+      ('twist_topic', '/matilda_velocity_controller/cmd_vel_unstamped'),
       ('odom_topic', '/wheel_odometry'),
 
       ('odom_frame', 'odom'),
@@ -137,26 +137,30 @@ class TwistToMotors(Node):
 
 
   def loop(self):
-    current_time = self.get_clock().now()
-    sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds / 1e9
-    if sec_since_last_command < self._command_timeout:
-      self.motor_driver.send_velocity(self.left, self.right)
+    try:
+      current_time = self.get_clock().now()
+      sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds / 1e9
+      if sec_since_last_command < self._command_timeout:
+        self.motor_driver.send_velocity(self.left, self.right)
 
-    if self._publish_motors: 
-      self.left_wheel_publisher.publish(Float32(data=self.left))
-      self.right_wheel_publisher.publish(Float32(data=self.right))
+      if self._publish_motors: 
+        self.left_wheel_publisher.publish(Float32(data=self.left))
+        self.right_wheel_publisher.publish(Float32(data=self.right))
 
-    if self._publish_odom:
-      try:
-        response = self.motor_driver.get_relative_encoders()
-        forward, ccw = 0.0, 0.0
-        if response is not None:
-          left, right = response
-          forward, ccw = self.diff2twist(left, right)
-        self.publish_odom(current_time, forward, ccw)
-      except Exception as e:
-        self.get_logger().error(str(e))
-        return
+      dina = self.motor_driver.get_digital_input()
+      self.get_logger().error(f'Digi: {dina}')
+
+      if self._publish_odom and False:
+        
+          response = self.motor_driver.get_relative_encoders()
+          forward, ccw = 0.0, 0.0
+          if response is not None:
+            left, right = response
+            forward, ccw = self.diff2twist(left, right)
+          self.publish_odom(current_time, forward, ccw)
+    except Exception as e:
+      self.get_logger().error(str(e))
+      return
 
 
   def twist2diff(self, forward, ccw):
