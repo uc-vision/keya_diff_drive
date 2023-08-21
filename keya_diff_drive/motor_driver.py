@@ -56,7 +56,7 @@ class MotorDriver(object):
     return self.get_response()
   
   def get_motor_command(self):
-    self.send("?DI")
+    self.send("?M")
     success = self.get_response()
     return self.get_response()
 
