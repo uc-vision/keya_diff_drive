@@ -147,10 +147,7 @@ class TwistToMotors(Node):
         self.left_wheel_publisher.publish(Float32(data=self.left))
         self.right_wheel_publisher.publish(Float32(data=self.right))
 
-      dina = self.motor_driver.get_digital_input()
-      self.get_logger().error(f'Digi: {dina}')
-
-      if self._publish_odom and False:
+      if self._publish_odom:
         
           response = self.motor_driver.get_relative_encoders()
           forward, ccw = 0.0, 0.0
