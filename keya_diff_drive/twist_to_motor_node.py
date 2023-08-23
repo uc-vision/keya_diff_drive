@@ -150,10 +150,11 @@ class TwistToMotors(Node):
       if self._publish_odom:
         
           response = self.motor_driver.get_relative_encoders()
-          forward, ccw = 0.0, 0.0
-          if response is not None:
-            left, right = response
-            forward, ccw = self.diff2twist(left, right)
+          if response is None:
+            return
+          
+          left, right = response
+          forward, ccw = self.diff2twist(left, right)
           self.publish_odom(current_time, forward, ccw)
     except Exception as e:
       self.get_logger().error(str(e))

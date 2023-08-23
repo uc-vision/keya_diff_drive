@@ -67,6 +67,7 @@ class MotorDriver(object):
     
     s = values.split(':')
     if len(s) <= 1:
+      print(s)
       return
 
     # encoders report 3x speed
