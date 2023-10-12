@@ -3,8 +3,8 @@ from functools import cached_property
 from std_msgs.msg import Float32, String
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
-from rcl_interfaces.msg import SetParametersResult
-from keya_diff_drive.motor_driver import MotorDriver
+from rcl_interfaces.msg import SetParametersResult, ParameterDescriptor, IntegerRange
+from keya_diff_drive.motor_driver import MotorDriver, SerialSettings, MotorDriverSettings
 from transforms3d.euler import euler2quat
 
 from nav_msgs.msg import Odometry
@@ -19,20 +19,27 @@ import numpy as np
 
 class TwistToMotors(Node):
   def parameters_callback(self, params):
+    motor_settings = self.motor_driver.motor_settings
     for param in params:
       match param.name:
         case 'base_width':
           self._base_width = param.value
         case 'publish_motors':
           self._publish_motors = param.value
+          
         case 'rotations_per_metre':
-          self.motor_driver.rotations_per_metre = param.value
+          motor_settings.rotations_per_metre = param.value
         case 'swap_motors':
-          self.motor_driver.swap_motors = param.value
+          motor_settings.swap_motors = param.value
         case 'inverse_left_motor':
-          self.motor_driver.inverse_left_motor = param.value
+          motor_settings.inverse_left_motor = param.value
         case 'inverse_right_motor':
-          self.motor_driver.inverse_right_motor = param.value
+          motor_settings.inverse_right_motor = param.value
+
+        case 'acceleration':
+          self.motor_driver.set_acceleration(param.value)
+        case 'deceleration':
+          self.motor_driver.set_deceleration(param.value)
     return SetParametersResult(successful=True)
 
   def __init__(self):
@@ -59,7 +66,19 @@ class TwistToMotors(Node):
       ('rotations_per_metre', 10),
       ('swap_motors', False),
       ('inverse_left_motor', False),
-      ('inverse_right_motor', False)
+      ('inverse_right_motor', False),
+      ('acceleration', 1000, ParameterDescriptor(
+        name='acceleration', 
+        type=2, 
+        description='Acceleration', 
+        integer_range=[IntegerRange(from_value=100, to_value=32000, step=100)])
+        ),
+      ('deceleration', 1000, ParameterDescriptor(
+        name='deceleration', 
+        type=2, 
+        description='deceleration', 
+        integer_range=[IntegerRange(from_value=100, to_value=32000, step=100)])
+        ),
     ]
     self.declare_parameters('', parameters=params)
     
@@ -81,15 +100,23 @@ class TwistToMotors(Node):
   
     self.left = 0.0
     self.right = 0.0
-    self.motor_driver = MotorDriver(
-      self.get_parameter('serial_port').value,
-      self.get_parameter('baud_rate').value,
-      self.get_parameter('serial_timeout').value,
+    serial_settings = SerialSettings(
+      port = self.get_parameter('serial_port').value,
+      baud_rate = self.get_parameter('baud_rate').value,
+      timeout = self.get_parameter('serial_timeout').value)
+    motor_settings = MotorDriverSettings(
       self.get_parameter('rotations_per_metre').value,
       self.get_parameter('swap_motors').value,
       self.get_parameter('inverse_left_motor').value,
-      self.get_parameter('inverse_right_motor').value
+      self.get_parameter('inverse_right_motor').value,
     )
+    self.motor_driver = MotorDriver(serial_settings, motor_settings)
+
+    accel = self.get_parameter('acceleration').value
+    self.motor_driver.set_acceleration(accel)
+
+    decel = self.get_parameter('deceleration').value
+    self.motor_driver.set_deceleration(decel)
 
     self.odom_msg = Odometry()
     self.odom_msg.header.frame_id = self._odom_frame
