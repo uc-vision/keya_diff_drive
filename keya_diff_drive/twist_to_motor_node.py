@@ -67,13 +67,13 @@ class TwistToMotors(Node):
       ('swap_motors', False),
       ('inverse_left_motor', False),
       ('inverse_right_motor', False),
-      ('acceleration', 1000, ParameterDescriptor(
+      ('acceleration', 10000, ParameterDescriptor(
         name='acceleration', 
         type=2, 
         description='Acceleration', 
         integer_range=[IntegerRange(from_value=100, to_value=32000, step=100)])
         ),
-      ('deceleration', 1000, ParameterDescriptor(
+      ('deceleration', 10000, ParameterDescriptor(
         name='deceleration', 
         type=2, 
         description='deceleration', 
