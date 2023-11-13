@@ -55,6 +55,7 @@ class TwistToMotors(Node):
 
       ('publish_odom', True),
       ('publish_motors', False),
+      ('debug', False),
 
       ('serial_port', '/dev/ttyUSB0'),
       ('baud_rate', 115200),
@@ -95,11 +96,13 @@ class TwistToMotors(Node):
 
     self._publish_odom = self.get_parameter('publish_odom').value
     self._publish_motors = self.get_parameter('publish_motors').value
+    self.debug = self.get_parameter('debug').value
 
     self.add_on_set_parameters_callback(self.parameters_callback)
   
-    self.left = 0.0
-    self.right = 0.0
+    self.linear_in = 0.0
+    self.angular_in = 0.0
+
     serial_settings = SerialSettings(
       port = self.get_parameter('serial_port').value,
       baud_rate = self.get_parameter('baud_rate').value,
@@ -167,22 +170,38 @@ class TwistToMotors(Node):
     try:
       current_time = self.get_clock().now()
       sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds / 1e9
+      left_in, right_in = self.twist2diff(self.linear_in , self.angular_in)
+
       if sec_since_last_command < self._command_timeout:
-        self.motor_driver.send_velocity(self.left, self.right)
+        self.motor_driver.send_velocity(left_in, right_in)
+
+      if self.debug:
+        self.get_logger().warn('------------------------------------------------------')
+        self.get_logger().warn(f'Forward in = {self.linear_in }')
+        self.get_logger().warn(f'Angular in = {self.angular_in}')
+        self.get_logger().warn(f'LEFT IN = {left_in}')
+        self.get_logger().warn(f'RIGHT IN = {right_in}')
+
+
+      response = self.motor_driver.get_relative_encoders()
+      if response is None:
+        return
+      left_out, right_out = response
+      linear_out, angular_out = self.diff2twist(left_out, right_out)
 
       if self._publish_motors: 
-        self.left_wheel_publisher.publish(Float32(data=self.left))
-        self.right_wheel_publisher.publish(Float32(data=self.right))
+        self.left_wheel_publisher.publish(Float32(data=left_out))
+        self.right_wheel_publisher.publish(Float32(data=right_out))
 
       if self._publish_odom:
+          self.publish_odom(current_time, linear_out, angular_out)
+
+      if self.debug:
+        self.get_logger().warn(f'LEFT OUT = {left_out}')
+        self.get_logger().warn(f'RIGHT OUT = {right_out}')
+        self.get_logger().warn(f'Forward out = {linear_out}')
+        self.get_logger().warn(f'Angular out = {angular_out}')
         
-          response = self.motor_driver.get_relative_encoders()
-          if response is None:
-            return
-          
-          left, right = response
-          forward, ccw = self.diff2twist(left, right)
-          self.publish_odom(current_time, forward, ccw)
     except Exception as e:
       self.get_logger().error(str(e))
       return
@@ -192,22 +211,18 @@ class TwistToMotors(Node):
     angular_to_linear = ccw * (self._wheel_separation / 2.0) 
     left_linear_val  = float((forward - angular_to_linear) / self._wheel_circum)
     right_linear_val = float((forward + angular_to_linear) / self._wheel_circum)
-    self.get_logger().warn(f'in = {ccw}')
     return left_linear_val, right_linear_val
-
 
   def diff2twist(self, left, right):
     forward = ((left+right) / 2) * self._wheel_circum
     ccw = ((right-left) / self._wheel_separation) * self._wheel_circum
-    self.get_logger().warn(f'out = {ccw}')
-    self.get_logger().warn(f'------------------------------------')
     return forward, ccw
+
 
   def twist_subscriber(self):
     def update_target(msg: Twist):
-      dx = msg.linear.x
-      dr = msg.angular.z
-      self.left, self.right = self.twist2diff(dx, dr)
+      self.linear_in = msg.linear.x
+      self.angular_in = msg.angular.z
       self.last_command_time = self.get_clock().now()
     return self.create_subscription(Twist, self._twist_topic, update_target, 10)
   
