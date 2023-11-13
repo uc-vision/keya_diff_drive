@@ -107,23 +107,17 @@ class MotorDriver(object):
     self.send("?S")
     success = self.get_response()
     values = self.get_response()
-    
 
     s = values.split(':')
     if len(s) <= 1:
       print(s)
       return
 
-    logger.warn(str(s))
     # encoders report 3x speed
-    m1 = int(s[0][2:])/3.0
+    m1 = int(s[0][2:])/3.0 
     m2 = int(s[1][:-1])/3.0
-    logger.warn(f'left: {m1}, right :{m2}')
-
 
     left, right = self.rps_to_linear(m1,m2)
-    logger.warn(f'left linear: {left}, right linear:{right}')
-    logger.warn('-----------------------------------------------------------------')
 
     return left, right
 
