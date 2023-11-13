@@ -192,12 +192,15 @@ class TwistToMotors(Node):
     angular_to_linear = ccw * (self._wheel_separation / 2.0) 
     left_linear_val  = float((forward - angular_to_linear) / self._wheel_circum)
     right_linear_val = float((forward + angular_to_linear) / self._wheel_circum)
+    self.get_logger().warn(f'in = {ccw}')
     return left_linear_val, right_linear_val
 
 
   def diff2twist(self, left, right):
     forward = ((left+right) / 2) * self._wheel_circum
     ccw = ((right-left) / self._wheel_separation) * self._wheel_circum
+    self.get_logger().warn(f'out = {ccw}')
+    self.get_logger().warn(f'------------------------------------')
     return forward, ccw
 
   def twist_subscriber(self):
