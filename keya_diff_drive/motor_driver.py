@@ -2,6 +2,7 @@ from rclpy.impl import rcutils_logger
 import serial
 import time
 from dataclasses import dataclass
+from enum import Flag, auto
 
 logger = rcutils_logger.RcutilsLogger(name="Motor_driver")
 
@@ -17,6 +18,30 @@ class MotorDriverSettings(object):
   swap_motors: bool = False
   inverse_left_motor: bool = False
   inverse_right_motor: bool = False
+
+class FaultStatus(Flag):
+  NO_FAULT = 0
+  OVERHEAT = auto()
+  OVERVOLTAGE = auto()
+  UNDERVOLTAGE = auto()
+  SHORT_CIRCUIT = auto()
+  EMERGENCY_STOP = auto()
+  SEPEX_EXCITATION = auto()
+  MOSFET_FAILURE = auto()
+  CONFIGURATION_ERR = auto()
+
+
+class StateStatus(Flag):
+  PULSE_MODE = auto()
+  ANALOG_MODE = auto()
+  POWER_STAGE_OFF = auto()
+  SHORT_CIRCUIT = auto()
+  EMERGENCY_STOP = auto()
+  SEPEX_EXCITATION = auto()
+  MOSFET_FAILURE = auto()
+  CONFIGURATION_ERR = auto()
+
+
 
 
 class MotorDriver(object):
@@ -53,6 +78,10 @@ class MotorDriver(object):
     left = m1 / self.motor_settings.rotations_per_metre
     right = m2 / self.motor_settings.rotations_per_metre
     return left, right
+
+
+  def get_response(self):
+    return self.serial.read_until(expected=b"\r").decode("ascii")
   
   def set_acceleration(self, rpm):
     """ Sets Acceleration of motors 
@@ -85,9 +114,28 @@ class MotorDriver(object):
     succ_2 = self.get_response()
 
 
-  def get_response(self):
-    return self.serial.read_until(expected=b"\r").decode("ascii")
+  def get_state_status(self):
+    self.send("?FS")
+    success = self.get_response()
+    return self.get_response()
   
+  def get_fault_status(self):
+    self.send("?FF 1")
+    success = self.get_response()
+    result1 =  self.get_response() # Reply: "FF = f1 + f2*2 + f3*4 + ... + fn*2n-1"
+    logger.info(str(result1))
+
+    self.send("?FF 2")
+    success = self.get_response()
+    result2 =  self.get_response()
+    logger.info(str(result2))
+
+    result1_parsed = result1[4:] 
+    result2_parsed = result2[4:]
+
+    return FaultStatus(result1_parsed), FaultStatus(result2_parsed)
+
+
   def get_analog_input(self):
     self.send("?AI")
     success = self.get_response()

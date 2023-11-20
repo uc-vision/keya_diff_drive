@@ -168,6 +168,8 @@ class TwistToMotors(Node):
 
   def loop(self):
     try:
+
+      # Send Input
       current_time = self.get_clock().now()
       sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds / 1e9
       left_in, right_in = self.twist2diff(self.linear_in , self.angular_in)
@@ -183,6 +185,7 @@ class TwistToMotors(Node):
         self.get_logger().warn(f'RIGHT IN = {right_in}')
 
 
+      # Read Encoder Output
       response = self.motor_driver.get_relative_encoders()
       if response is None:
         return
@@ -195,6 +198,14 @@ class TwistToMotors(Node):
 
       if self._publish_odom:
           self.publish_odom(current_time, linear_out, angular_out)
+      
+      # Read Motor Status
+      state = self.motor_driver.get_state_status()
+      motor1, motor2 = self.motor_driver.get_fault_status()
+
+      self.get_logger().info(str(state))
+      self.get_logger().info(f'{motor1} {motor2}')
+
 
       if self.debug:
         self.get_logger().warn(f'LEFT OUT = {left_out}')
