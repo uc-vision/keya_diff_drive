@@ -15,7 +15,7 @@ class SerialSettings(object):
 @dataclass
 class MotorDriverSettings(object):
   rotations_per_metre: int = 10
-  max_rotation_per_metre: int = 3000
+  max_rpm: int = 3000
   swap_motors: bool = False
   inverse_left_motor: bool = False
   inverse_right_motor: bool = False
@@ -55,7 +55,7 @@ class MotorDriver(object):
       timeout=serial_settings.timeout)
   
     self.rotations_per_metre: int = motor_settings.rotations_per_metre
-    self.max_rotation_per_metre: int = motor_settings.max_rotation_per_metre
+    self.max_rpm: int = motor_settings.max_rpm
     self.swap_motors: bool = motor_settings.swap_motors
     self.inverse_left_motor: bool = motor_settings.inverse_left_motor 
     self.inverse_right_motor: bool = motor_settings.inverse_right_motor
@@ -182,8 +182,8 @@ class MotorDriver(object):
 
   def send_velocity(self, left, right):
     m1, m2 = self.linear_to_rps(left, right)
-    capped_m1 = min( m1, self.max_rotation_per_metre )
-    capped_m2 = min( m2, self.max_rotation_per_metre )
+    capped_m1 = min( m1, self.max_rpm )
+    capped_m2 = min( m2, self.max_rpm )
     self.send("!m %d %d" %(capped_m1,capped_m2))
     # clear buffer of responses
     self.get_response()
