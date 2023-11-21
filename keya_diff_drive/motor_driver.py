@@ -79,7 +79,7 @@ class MotorDriver(object):
   def rps_to_linear(self, m1, m2):
     m1, m2 = self.format_rps(m1, m2)
 
-    if self.motor_settings.swap_motors:
+    if self.swap_motors:
       m1, m2 = m2, m1
     
     left = m1 / self.rotations_per_metre
@@ -182,10 +182,19 @@ class MotorDriver(object):
 
   def send_velocity(self, left, right):
     m1, m2 = self.linear_to_rps(left, right)
-    capped_m1 = min( m1, self.max_rpm )
-    capped_m2 = min( m2, self.max_rpm )
+
+    if m1 >= 0:
+      capped_m1 = min( m1, self.max_rpm/3 )
+    else:
+      capped_m1 = max( m1 , -1 * self.max_rpm/3 )
+
+    if m2 >= 0:
+      capped_m2 = min( m2, self.max_rpm/3 )
+    else:
+      capped_m2 = max( m2 , -1 * self.max_rpm/3 )
+
     self.send("!m %d %d" %(capped_m1,capped_m2))
-    # clear buffer of responses
+    # clear responses
     self.get_response()
     self.get_response()
 

@@ -65,7 +65,7 @@ class TwistToMotors(Node):
       ('wheel_separation', 0.43),
       ('wheel_radius',     0.215),
       ('rotations_per_metre', 10),
-      ('max_rpm', 3000)
+      ('max_rpm', 3000),
 
       ('swap_motors', False),
       ('inverse_left_motor', False),
@@ -205,10 +205,6 @@ class TwistToMotors(Node):
       # Read Motor Status
       state = self.motor_driver.get_state_status()
       motor1, motor2 = self.motor_driver.get_fault_status()
-
-      self.get_logger().info(str(state))
-      self.get_logger().info(f'{motor1} {motor2}')
-
 
       if self.debug:
         self.get_logger().warn(f'LEFT OUT = {left_out}')
