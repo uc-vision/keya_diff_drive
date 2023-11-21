@@ -15,6 +15,7 @@ class SerialSettings(object):
 @dataclass
 class MotorDriverSettings(object):
   rotations_per_metre: int = 10
+  max_rotation_per_metre: int = 3000
   swap_motors: bool = False
   inverse_left_motor: bool = False
   inverse_right_motor: bool = False
@@ -32,6 +33,7 @@ class FaultStatus(Flag):
 
 
 class StateStatus(Flag):
+  NO_INPUT = 0
   PULSE_MODE = auto()
   ANALOG_MODE = auto()
   POWER_STAGE_OFF = auto()
@@ -51,20 +53,25 @@ class MotorDriver(object):
       serial_settings.port, 
       serial_settings.baud_rate, 
       timeout=serial_settings.timeout)
-    self.motor_settings = motor_settings
+  
+    self.rotations_per_metre: int = motor_settings.rotations_per_metre
+    self.max_rotation_per_metre: int = motor_settings.max_rotation_per_metre
+    self.swap_motors: bool = motor_settings.swap_motors
+    self.inverse_left_motor: bool = motor_settings.inverse_left_motor 
+    self.inverse_right_motor: bool = motor_settings.inverse_right_motor
 
   def format_rps(self, m1, m2):
-    inverse_left_motor = -1 if self.motor_settings.inverse_left_motor else 1
-    inverse_right_motor = -1 if self.motor_settings.inverse_right_motor else 1
+    inverse_left_motor = -1 if self.inverse_left_motor else 1
+    inverse_right_motor = -1 if self.inverse_right_motor else 1
     m1 = int(m1 * inverse_left_motor)
     m2 = int(m2 * inverse_right_motor)
     return m1, m2
 
   def linear_to_rps(self, left, right):
-    m1 = left * self.motor_settings.rotations_per_metre
-    m2 = right * self.motor_settings.rotations_per_metre
+    m1 = left * self.rotations_per_metre
+    m2 = right * self.rotations_per_metre
     
-    if self.motor_settings.swap_motors:
+    if self.swap_motors:
       m1, m2 = m2, m1
 
     return self.format_rps(m1, m2)
@@ -75,8 +82,8 @@ class MotorDriver(object):
     if self.motor_settings.swap_motors:
       m1, m2 = m2, m1
     
-    left = m1 / self.motor_settings.rotations_per_metre
-    right = m2 / self.motor_settings.rotations_per_metre
+    left = m1 / self.rotations_per_metre
+    right = m2 / self.rotations_per_metre
     return left, right
 
 
@@ -117,21 +124,20 @@ class MotorDriver(object):
   def get_state_status(self):
     self.send("?FS")
     success = self.get_response()
-    return self.get_response()
+    result = self.get_response()
+    return StateStatus(int(result[3:]))
   
   def get_fault_status(self):
-    self.send("?FF 1")
+    self.send("?FF 0")
     success = self.get_response()
     result1 =  self.get_response() # Reply: "FF = f1 + f2*2 + f3*4 + ... + fn*2n-1"
-    logger.info(str(result1))
 
-    self.send("?FF 2")
+    self.send("?FF 1")
     success = self.get_response()
     result2 =  self.get_response()
-    logger.info(str(result2))
 
-    result1_parsed = result1[4:] 
-    result2_parsed = result2[4:]
+    result1_parsed = int(result1[3:])
+    result2_parsed = int(result2[3:])
 
     return FaultStatus(result1_parsed), FaultStatus(result2_parsed)
 
@@ -176,7 +182,9 @@ class MotorDriver(object):
 
   def send_velocity(self, left, right):
     m1, m2 = self.linear_to_rps(left, right)
-    self.send("!m %d %d" %(m1,m2))
+    capped_m1 = min( m1, self.max_rotation_per_metre )
+    capped_m2 = min( m2, self.max_rotation_per_metre )
+    self.send("!m %d %d" %(capped_m1,capped_m2))
     # clear buffer of responses
     self.get_response()
     self.get_response()

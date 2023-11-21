@@ -19,7 +19,7 @@ import numpy as np
 
 class TwistToMotors(Node):
   def parameters_callback(self, params):
-    motor_settings = self.motor_driver.motor_settings
+    motor_settings = self.motor_driver
     for param in params:
       match param.name:
         case 'base_width':
@@ -65,6 +65,8 @@ class TwistToMotors(Node):
       ('wheel_separation', 0.43),
       ('wheel_radius',     0.215),
       ('rotations_per_metre', 10),
+      ('max_rotations_per_metre', 3000)
+
       ('swap_motors', False),
       ('inverse_left_motor', False),
       ('inverse_right_motor', False),
@@ -109,6 +111,7 @@ class TwistToMotors(Node):
       timeout = self.get_parameter('serial_timeout').value)
     motor_settings = MotorDriverSettings(
       self.get_parameter('rotations_per_metre').value,
+      self.get_parameter('max_rotations_per_metre').value,
       self.get_parameter('swap_motors').value,
       self.get_parameter('inverse_left_motor').value,
       self.get_parameter('inverse_right_motor').value,
