@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 from functools import cached_property
-from std_msgs.msg import Float32, String
+from std_msgs.msg import Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from rcl_interfaces.msg import SetParametersResult, ParameterDescriptor, IntegerRange
 from keya_diff_drive.motor_driver import MotorDriver, SerialSettings, MotorDriverSettings
-from transforms3d.euler import euler2quat
+import traceback
 
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Int16
-from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
+from geometry_msgs.msg import Twist
 
 import rclpy
 from rclpy.constants import S_TO_NS
@@ -213,7 +212,7 @@ class TwistToMotors(Node):
         self.get_logger().warn(f'Angular out = {angular_out}')
         
     except Exception as e:
-      self.get_logger().error(str(e))
+      self.get_logger().error(traceback.format_exc())  
       return
 
 
