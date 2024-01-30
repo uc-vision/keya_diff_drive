@@ -165,14 +165,10 @@ class MotorDriver(object):
       values = self.get_response()
 
       s = values.split(':')
-      
-      # encoders report 3x speed
-      m1 = int(s[0][2:])/3.0 
-      m2 = int(s[1][:-1])/3.0
+      m1 = int(s[0][2:])/3.0  # encoders report 3x speed
+      m2 = int(s[1][:-1])/3.0 # encoders report 3x speed
 
-      left, right = self.rps_to_linear(m1,m2)
-
-      return left, right
+      return self.rps_to_linear(m1, m2)
     except ValueError as e:
       raise ValueError(str(s)) from e
     

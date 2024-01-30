@@ -210,6 +210,7 @@ class TwistToMotors(Node):
         self.get_logger().warn(f'Angular out = {angular_out}')
         
     except Exception as e:
+      self.get_logger().error('------------------------------------------------------')  
       self.get_logger().error(traceback.format_exc())  
       return
 
