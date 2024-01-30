@@ -189,8 +189,6 @@ class TwistToMotors(Node):
 
       # Read Encoder Output
       response = self.motor_driver.get_relative_encoders()
-      if response is None:
-        return
       left_out, right_out = response
       linear_out, angular_out = self.diff2twist(left_out, right_out)
 

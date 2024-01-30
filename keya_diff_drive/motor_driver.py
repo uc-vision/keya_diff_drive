@@ -88,7 +88,8 @@ class MotorDriver(object):
 
 
   def get_response(self):
-    return self.serial.read_until(expected=b"\r").decode("ascii")
+    return self.serial.read_until(expected=b"\r").decode("ascii", errors="replace")
+
   
   def set_acceleration(self, rpm):
     """ Sets Acceleration of motors 
@@ -158,22 +159,23 @@ class MotorDriver(object):
     return self.get_response()
 
   def get_relative_encoders(self):
-    self.send("?S")
-    success = self.get_response()
-    values = self.get_response()
+    try:
+      self.send("?S")
+      success = self.get_response()
+      values = self.get_response()
 
-    s = values.split(':')
-    if len(s) <= 1:
-      print(s)
-      return
+      s = values.split(':')
+      
+      # encoders report 3x speed
+      m1 = int(s[0][2:])/3.0 
+      m2 = int(s[1][:-1])/3.0
 
-    # encoders report 3x speed
-    m1 = int(s[0][2:])/3.0 
-    m2 = int(s[1][:-1])/3.0
+      left, right = self.rps_to_linear(m1,m2)
 
-    left, right = self.rps_to_linear(m1,m2)
-
-    return left, right
+      return left, right
+    except ValueError as e:
+      raise ValueError(str(s)) from e
+    
 
   def send(self, message):
     packet = message.encode("ascii") + b'\r'
