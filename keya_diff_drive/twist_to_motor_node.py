@@ -202,8 +202,8 @@ class TwistToMotors(Node):
           self.publish_odom(current_time, linear_out, angular_out)
       
       # Read Motor Status
-      state = self.motor_driver.get_state_status()
-      motor1, motor2 = self.motor_driver.get_fault_status()
+      # state = self.motor_driver.get_state_status()
+      # motor1, motor2 = self.motor_driver.get_fault_status()
 
       if self.debug:
         self.get_logger().warn(f'LEFT OUT = {left_out}')
