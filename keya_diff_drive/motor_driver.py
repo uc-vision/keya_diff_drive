@@ -4,6 +4,8 @@ import time
 from dataclasses import dataclass
 from enum import Flag, auto
 
+import re
+
 logger = rcutils_logger.RcutilsLogger(name="Motor_driver")
 
 @dataclass
@@ -60,6 +62,8 @@ class MotorDriver(object):
     self.inverse_left_motor: bool = motor_settings.inverse_left_motor 
     self.inverse_right_motor: bool = motor_settings.inverse_right_motor
 
+    self.read_attempts = 5
+
   def format_rps(self, m1, m2):
     inverse_left_motor = -1 if self.inverse_left_motor else 1
     inverse_right_motor = -1 if self.inverse_right_motor else 1
@@ -89,6 +93,18 @@ class MotorDriver(object):
 
   def get_response(self):
     return self.serial.read_until(expected=b"\r").decode("ascii", errors="replace")
+
+  def read_until_regex(self, reg, attempts=5):
+    """ Read until matching regex, """
+    _read = []
+    for _ in range(attempts):
+      resp = self.get_response()
+      groups = re.findall(reg, resp) 
+      if len(groups) > 0:
+        return groups[0], True
+      _read.append(resp)
+    return _read, False
+    
 
   
   def set_acceleration(self, rpm):
@@ -159,19 +175,18 @@ class MotorDriver(object):
     return self.get_response()
 
   def get_relative_encoders(self):
-    try:
-      self.send("?S")
-      success = self.get_response()
-      values = self.get_response()
 
-      s = values.split(':')
-      m1 = int(s[0][2:])/3.0  # encoders report 3x speed
-      m2 = int(s[1][:-1])/3.0 # encoders report 3x speed
+    self.send("?S")
+    result, success = self.read_until_regex("S=-?[0-9]+:-?[0-9]+", self.read_attempts)
+    if not success:
+      raise ValueError(f'No valid response. Got: {result}')
 
-      return self.rps_to_linear(m1, m2)
-    except ValueError as e:
-      raise ValueError(str(s)) from e
-    
+    m = re.findall(r'-?\d+', result)
+    m1 = int(m[0]) / 3.0
+    m2 = int(m[1]) / 3.0
+
+    return self.rps_to_linear(m1, m2)
+
 
   def send(self, message):
     packet = message.encode("ascii") + b'\r'
@@ -192,9 +207,6 @@ class MotorDriver(object):
       capped_m2 = max( m2 , -1 * self.max_rpm/3 )
 
     self.send("!m %d %d" %(capped_m1,capped_m2))
-    # clear responses
-    self.get_response()
-    self.get_response()
 
   def close(self):
     self.serial.close()

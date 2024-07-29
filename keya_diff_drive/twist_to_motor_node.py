@@ -133,9 +133,11 @@ class TwistToMotors(Node):
     odometry_period = 1 / self.get_parameter('odometry_rate').value
     self.last_odom_time = self.get_clock().now()
     self.last_command_time = self.get_clock().now()
-    self.loop_timer = self.create_timer(odometry_period, self.loop)
+
+    self.send_input_timer = self.create_timer(odometry_period, self.loop)
 
     self.twist_sub = self.twist_subscriber()
+    self.get_logger().info('Ready for input')
 
 
   @cached_property
@@ -167,27 +169,25 @@ class TwistToMotors(Node):
     self.wheel_odometry_publisher.publish(self.odom_msg)
     self.last_odom_time = current_time
 
-
-  def loop(self):
+  def send_input(self):
     try:
-
-      # Send Input
       current_time = self.get_clock().now()
       sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds / 1e9
       left_in, right_in = self.twist2diff(self.linear_in , self.angular_in)
 
       if sec_since_last_command < self._command_timeout:
         self.motor_driver.send_velocity(left_in, right_in)
-
-      if self.debug:
-        self.get_logger().warn('------------------------------------------------------')
-        self.get_logger().warn(f'Forward in = {self.linear_in }')
-        self.get_logger().warn(f'Angular in = {self.angular_in}')
-        self.get_logger().warn(f'LEFT IN = {left_in}')
-        self.get_logger().warn(f'RIGHT IN = {right_in}')
-
+        
+    except Exception as e:
+      self.get_logger().error('------------------------------------------------------')  
+      self.get_logger().error(traceback.format_exc())  
+      return
+    
+  def read_encoders(self):
+    try:
 
       # Read Encoder Output
+      current_time = self.get_clock().now()
       response = self.motor_driver.get_relative_encoders()
       left_out, right_out = response
       linear_out, angular_out = self.diff2twist(left_out, right_out)
@@ -214,6 +214,9 @@ class TwistToMotors(Node):
       self.get_logger().error(traceback.format_exc())  
       return
 
+  def loop(self):
+    self.send_input()
+    self.read_encoders()
 
   def twist2diff(self, forward, ccw):
     angular_to_linear = ccw * (self._wheel_separation / 2.0) 
@@ -232,7 +235,7 @@ class TwistToMotors(Node):
       self.linear_in = msg.linear.x
       self.angular_in = msg.angular.z
       self.last_command_time = self.get_clock().now()
-    return self.create_subscription(Twist, self._twist_topic, update_target, 10)
+    return self.create_subscription(Twist, self._twist_topic, update_target, 1)
   
   def destroy_node(self):
     self.loop_timer.destroy()
