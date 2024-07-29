@@ -59,7 +59,7 @@ class TwistToMotors(Node):
       ('serial_port', '/dev/ttyUSB0'),
       ('baud_rate', 115200),
       ('serial_timeout', 0.1),
-      ('command_timeout', 1),
+      ('command_timeout', 0.1),
 
       ('wheel_separation', 0.43),
       ('wheel_radius',     0.215),
@@ -171,13 +171,20 @@ class TwistToMotors(Node):
 
   def send_input(self):
     try:
+      if self.last_command_time is None:
+        return
+ 
       current_time = self.get_clock().now()
       sec_since_last_command = ( current_time - self.last_command_time ).nanoseconds / 1e9
-      left_in, right_in = self.twist2diff(self.linear_in , self.angular_in)
 
-      if sec_since_last_command < self._command_timeout:
-        self.motor_driver.send_velocity(left_in, right_in)
-        
+      if sec_since_last_command > self._command_timeout:
+        self.last_command_time = None
+        self.motor_driver.send_velocity(0, 0)
+        return
+
+      left_in, right_in = self.twist2diff(self.linear_in , self.angular_in)
+      self.motor_driver.send_velocity(left_in, right_in)
+
     except Exception as e:
       self.get_logger().error('------------------------------------------------------')  
       self.get_logger().error(traceback.format_exc())  
