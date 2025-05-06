@@ -130,6 +130,8 @@ class TwistToMotors(Node):
     self.linear_cov = 0.02
     self.angular_cov = 0.04
 
+    self.error_log_throttle = 30.0
+
     odometry_period = 1 / self.get_parameter('odometry_rate').value
     self.last_odom_time = self.get_clock().now()
     self.last_command_time = self.get_clock().now()
@@ -186,8 +188,8 @@ class TwistToMotors(Node):
       self.motor_driver.send_velocity(left_in, right_in)
 
     except Exception as e:
-      self.get_logger().error('------------------------------------------------------')  
-      self.get_logger().error(traceback.format_exc())  
+      self.log_error('-' * 30)
+      self.log_error(traceback.format_exc())
       return
     
   def read_encoders(self):
@@ -217,9 +219,12 @@ class TwistToMotors(Node):
         self.get_logger().warn(f'Angular out = {angular_out}')
         
     except Exception as e:
-      self.get_logger().error('------------------------------------------------------')  
-      self.get_logger().error(traceback.format_exc())  
+      self.log_error('-' * 30)
+      self.log_error(traceback.format_exc())
       return
+    
+  def log_error(self, x):
+      self.get_logger().error(x, throttle_duration_sec=self.error_log_throttle)  
 
   def loop(self):
     self.send_input()
