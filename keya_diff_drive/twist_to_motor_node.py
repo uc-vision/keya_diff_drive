@@ -212,6 +212,10 @@ class TwistToMotors(Node):
       # state = self.motor_driver.get_state_status()
       # motor1, motor2 = self.motor_driver.get_fault_status()
 
+      # Read Motor Amps
+      # amps_m1, amps_m2 = self.motor_driver.get_motor_amps()
+      # self.get_logger().info(f"Motor Amps: Left = {amps_m1}, Right = {amps_m2}")
+
       if self.debug:
         self.get_logger().warn(f'LEFT OUT = {left_out}')
         self.get_logger().warn(f'RIGHT OUT = {right_out}')

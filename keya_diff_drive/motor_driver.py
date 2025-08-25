@@ -158,6 +158,16 @@ class MotorDriver(object):
 
     return FaultStatus(result1_parsed), FaultStatus(result2_parsed)
 
+  def get_motor_amps(self):
+    self.send("?A")
+    result, success = self.read_until_regex("A=-?[0-9]+:-?[0-9]+", self.read_attempts)
+    if not success:
+      raise ValueError(f'No valid response. Got: {result}')
+
+    m = re.findall(r'-?\d+', result)
+    m1 = int(m[0]) / 10.0
+    m2 = int(m[1]) / 10.0
+    return m1, m2
 
   def get_analog_input(self):
     self.send("?AI")
