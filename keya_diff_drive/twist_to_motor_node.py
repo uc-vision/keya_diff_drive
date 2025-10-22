@@ -8,6 +8,7 @@ from keya_diff_drive.motor_driver import MotorDriver, SerialSettings, MotorDrive
 import traceback
 
 from nav_msgs.msg import Odometry
+from matilda_interface.msg import WheelOdom
 from geometry_msgs.msg import Twist
 
 import rclpy
@@ -143,13 +144,8 @@ class TwistToMotors(Node):
 
 
   @cached_property
-  def left_wheel_publisher(self):
-    return self.create_publisher(Float32, 'lwheel_vtarget', 10)
-  
-
-  @cached_property
-  def right_wheel_publisher(self):
-    return self.create_publisher(Float32, 'rwheel_vtarget', 10)
+  def wheel_encoders_publisher(self):
+    return self.create_publisher(WheelOdom, '/wheel_encoders', 10)
   
 
   @cached_property
@@ -202,8 +198,9 @@ class TwistToMotors(Node):
       linear_out, angular_out = self.diff2twist(left_out, right_out)
 
       if self._publish_motors: 
-        self.left_wheel_publisher.publish(Float32(data=left_out))
-        self.right_wheel_publisher.publish(Float32(data=right_out))
+        encoders_msg = WheelOdom(stamp=current_time.to_msg(), left=left_out, right=right_out)
+        self.wheel_encoders_publisher.publish(encoders_msg)
+        
 
       if self._publish_odom:
           self.publish_odom(current_time, linear_out, angular_out)
